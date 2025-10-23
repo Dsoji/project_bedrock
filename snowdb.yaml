@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snowdb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: snowdb
+  template:
+    metadata:
+      labels:
+        app: snowdb
+    spec:
+      containers:
+        - name: snowdb
+          image: public.ecr.aws/docker/library/mariadb:10.5
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: snowdb-secret
+                  key: MYSQL_ROOT_PASSWORD
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: snowdb
+spec:
+  selector:
+    app: snowdb
+  ports:
+    - protocol: TCP
+      port: 3306
+      targetPort: 3306
