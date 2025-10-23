@@ -1,77 +1,110 @@
-# PROJECT BEDROCK
-## ✨ Deployment and Architecture of Innovate Mart's E-commerce startup "Project Bedrock
+# Project Bedrock
 
-## IAC 
+A comprehensive AWS EKS infrastructure deployment for Innovate Mart's e-commerce platform, built with Terraform and Kubernetes.
 
+## Overview
 
-### Created an IAM user 'Terraform' with Admin access and access key in the console and configured it on the CLI.
+This project implements a production-ready containerized application infrastructure on AWS, featuring an Elastic Kubernetes Service (EKS) cluster with proper networking, security, and access management.
+
+## Architecture
+
+The infrastructure consists of:
+
+- **VPC**: Custom virtual private cloud with CIDR 10.0.0.0/16
+- **Networking**: Multi-AZ subnet configuration across eu-west-2a and eu-west-2b
+- **Compute**: EKS cluster with managed node groups
+- **Security**: IAM roles, security groups, and RBAC policies
+- **Access Control**: Developer access management with granular permissions
+
+## Prerequisites
+
+Before deploying this infrastructure, ensure you have:
+
+- AWS CLI configured with appropriate permissions
+- Terraform installed (version 1.0+)
+- kubectl installed for Kubernetes management
+- An AWS account with sufficient permissions
+
+## Quick Start
+
+### 1. AWS Configuration
+
+Configure your AWS credentials:
+
 ```bash
 aws configure
-# You'll be prompted to enter:
-# AWS Access Key ID [None]: your-access-key
-# AWS Secret Access Key [None]: your-secret-key
-# Default region name [None]: eu-west-2
-# Default output format [None]: json
 ```
 
-### Provisioned the following AWS resources:
-### - VPC with CIDR 10.0.0.0/16
-### - Subnets (2 Public and 2 Private Subnets across eu-west-2a and eu-west-2b)
-### - Route Tables with proper internet gateway routing
-### - Internet Gateway
-### - NAT Gateway was not provisioned due to cost considerations
-### - Elastic Kubernetes Service(EKS) and Nodes in the Public subnets for internet access
-#### Roles attached:
-#### 1. AmazonEC2ContainerRegistryReadOnly
-#### 2. AmazonEKSWorkerNodePolicy
-#### 3. AmazonEKS_CNI_Policy
+Enter your AWS Access Key ID, Secret Access Key, and set the region to `eu-west-2`.
 
+### 2. Infrastructure Deployment
 
-### Ran the following commands to apply these changes to AWS:
+Deploy the infrastructure using Terraform:
+
 ```bash
-# Create terraform.tfvars file
+# Initialize Terraform
+terraform init
+
+# Create variables file
 echo 'aws_region = "eu-west-2"' > terraform.tfvars
 
-# Initialize and apply
-terraform init
+# Plan the deployment
 terraform plan
+
+# Apply the configuration
 terraform apply
 ```
 
-### ⚠️ Important Notes:
-- **Instance Type**: Changed from t3.medium to t3.small (Free Tier eligible)
-- **Subnet Configuration**: Nodes deployed in public subnets for internet access
-- **Availability Zones**: Subnets distributed across eu-west-2a and eu-west-2b
+### 3. Kubernetes Setup
 
-## ✨ Kubernetes Configuration
-### Configured Kubernetes
-`aws eks update-kubeconfig --name  project-bedrock-eks  --region eu-west-2`
-### Ran the following commands to test 
-`
+Connect to your EKS cluster:
+
+```bash
+aws eks update-kubeconfig --name project-bedrock-eks --region eu-west-2
+```
+
+Verify the cluster is accessible:
+
+```bash
 kubectl get nodes
-`
-### Deployed the containers 
-`
-kubectl apply -f https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/kubernetes.yaml
-`
-### Confirmed it was running successfully
-`
-kubectl get pods
-`
+```
 
-### Got the deployed ui's EXTERNAL-IP
-`ui     LoadBalancer   172.20.113.0   a3b2a86fca4af4edabecd2e5bf5c66ec-882766964.eu-west-2.elb.amazonaws.com   80:31361/TCP   3m52s
-`
+## Infrastructure Components
 
-## ✨ IAM (Identity and Access Management)
+### Networking
 
-### Created an IAM user "eks_dev_" in the console to access the EKS cluster with JSON Policy:
-`
+The VPC is configured with:
+- **Public Subnets**: 10.0.32.0/20 (eu-west-2a), 10.0.16.0/20 (eu-west-2b)
+- **Private Subnets**: 10.0.128.0/20 (eu-west-2a), 10.0.144.0/20 (eu-west-2b)
+- **Internet Gateway**: For public subnet internet access
+- **Route Tables**: Properly configured for traffic routing
+
+### Compute Resources
+
+- **EKS Cluster**: project-bedrock-eks (version 1.33)
+- **Node Group**: t3.small instances (Free Tier eligible)
+- **Auto Scaling**: 1-1 node configuration
+- **Subnet Placement**: Public subnets for internet connectivity
+
+### Security
+
+- **IAM Roles**: EKS cluster and node group roles
+- **Security Groups**: EKS-managed security groups
+- **RBAC**: Kubernetes role-based access control
+
+## Developer Access
+
+### Setting Up Developer Access
+
+1. **Create IAM User**: Create `eks_dev_` user in AWS Console
+2. **Attach Policy**: Apply the following IAM policy:
+
+```json
 {
-    "Version": "2012-10-17",   
+    "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "Statement1",
+            "Sid": "EKSReadAccess",
             "Effect": "Allow",
             "Action": [
                 "eks:DescribeCluster",
@@ -87,17 +120,15 @@ kubectl get pods
                 "eks:DescribeAddonVersions",
                 "eks:ListIdentityProviderConfigs",
                 "eks:DescribeIdentityProviderConfig"
-            ], <br>
-            "Resource": [
-                "*"
-            ]
+            ],
+            "Resource": ["*"]
         },
         {
             "Effect": "Allow",
             "Action": [
                 "iam:GetRole",
                 "iam:ListAttachedRolePolicies"
-            ], <br>
+            ],
             "Resource": "*"
         },
         {
@@ -108,34 +139,22 @@ kubectl get pods
                 "ec2:DescribeSecurityGroups",
                 "ec2:DescribeSubnets",
                 "ec2:DescribeVpcs"
-            ],<br>
+            ],
             "Resource": "*"
         }
     ]
 }
-`
+```
 
-### ✨Created a Cluster role and Cluster role binding "eks-developer.yaml" for the developer (eks_dev_) to be able to access the following:
-`
-    - pods
-    - pods/log
-    - pods/status
-    - services
-    - endpoints
-    - persistentvolumeclaims
-    - persistentvolumes
-    - nodes
-    - namespaces
-    - configmaps
-    - secrets
-    - events
-`
-### Added the aws IAM user to the kube-configuration
+3. **Apply Kubernetes RBAC**:
+
 ```bash
-# Apply RBAC configuration
 kubectl apply -f eks-developer.yaml
+```
 
-# Add user to EKS cluster
+4. **Add User to Cluster**:
+
+```bash
 kubectl patch configmap/aws-auth -n kube-system --patch '{
   "data": {
     "mapUsers": "|\n- userarn: arn:aws:iam::103794580682:user/eks_dev_\n  username: eks_dev_\n  groups:\n  - system:masters\n"
@@ -143,43 +162,90 @@ kubectl patch configmap/aws-auth -n kube-system --patch '{
 }'
 ```
 
-### ✅ Developer Access Setup Complete
-The `eks_dev_` user now has full access to the EKS cluster with the following permissions:
-- **Kubernetes Resources**: pods, services, deployments, configmaps, secrets, etc.
-- **System Access**: system:masters group (full cluster access)
-- **AWS Permissions**: EKS, EC2, and IAM read access
-## 🔧 Troubleshooting
+### Developer Permissions
 
-### Common Issues and Solutions:
+The `eks_dev_` user has access to:
+- Kubernetes resources (pods, services, deployments, configmaps, secrets)
+- Cluster monitoring and management
+- Full system access via system:masters group
 
-1. **EKS Node Group Creation Fails**
-   - **Issue**: "Instances failed to join the kubernetes cluster"
-   - **Solution**: Ensure subnets have proper internet gateway routing and use Free Tier eligible instance types (t3.small)
+## Application Deployment
 
-2. **Free Tier Instance Type Error**
-   - **Issue**: "The specified instance type is not eligible for Free Tier"
-   - **Solution**: Use t3.small instead of t3.medium for Free Tier compatibility
+Deploy a sample e-commerce application:
 
-3. **Subnet Availability Zone Error**
-   - **Issue**: "Subnets specified must be in at least two different AZs"
-   - **Solution**: Ensure subnets are distributed across multiple availability zones
+```bash
+kubectl apply -f https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/kubernetes.yaml
+```
 
-4. **Developer Access Issues**
-   - **Issue**: Developer cannot access EKS cluster
-   - **Solution**: Verify IAM user has correct permissions and is added to aws-auth configmap
+Check deployment status:
 
-## 🚀 Next Steps
+```bash
+kubectl get pods
+kubectl get services
+```
 
-### For Developers:
-1. Configure AWS CLI with `eks_dev_` credentials
-2. Connect to cluster: `aws eks update-kubeconfig --name project-bedrock-eks --region eu-west-2`
-3. Test access: `kubectl get nodes`
+## Configuration Details
 
-### For Deployment:
-1. Deploy sample application: `kubectl apply -f https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/kubernetes.yaml`
-2. Check status: `kubectl get pods`
-3. Get external IP: `kubectl get services`
+### Instance Configuration
 
-## ✨ CI/CD WITH GITHUB ACTIONS
-### Added a workflow file that is triggered when changes are pushed to the feature branch and runs "terraform plan"; while a merge triggers the "terraform apply" command. This is the concept of GitFlow.
-# project_bedrock
+- **Instance Type**: t3.small (Free Tier eligible)
+- **AMI**: Amazon Linux 2023
+- **Storage**: 20GB EBS volumes
+- **Networking**: Public IP assignment enabled
+
+### Cost Optimization
+
+- Free Tier eligible instance types
+- No NAT Gateway (cost consideration)
+- Single node configuration for development
+
+## Troubleshooting
+
+### Common Issues
+
+**Node Group Creation Fails**
+- Ensure subnets have internet gateway routing
+- Verify instance type is Free Tier eligible
+- Check security group configurations
+
+**Developer Access Denied**
+- Verify IAM user has correct permissions
+- Confirm user is added to aws-auth configmap
+- Check AWS CLI configuration
+
+**Cluster Connectivity Issues**
+- Verify kubectl context is correct
+- Check EKS cluster endpoint accessibility
+- Confirm security group rules
+
+## File Structure
+
+```
+project-bedrock/
+├── main.tf                 # Terraform provider configuration
+├── vpc.tf                  # VPC and networking resources
+├── eks.tf                  # EKS cluster and node groups
+├── variable.tf             # Terraform variables
+├── eks-developer.yaml      # Kubernetes RBAC configuration
+├── terraform.tfvars        # Variable values (not in git)
+└── README.md              # This file
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test the infrastructure deployment
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
+
+## Support
+
+For issues and questions:
+- Check the troubleshooting section
+- Review AWS EKS documentation
+- Open an issue in the repository
